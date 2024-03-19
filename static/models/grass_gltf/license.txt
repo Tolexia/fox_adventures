@@ -1,0 +1,11 @@
+Model Information:
+* title:	Realistics grass 03
+* source:	https://sketchfab.com/3d-models/realistics-grass-03-2589c4f89dac4bbfab7f66be615f262e
+* author:	Digital screen official (https://sketchfab.com/ck212575)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Realistics grass 03" (https://sketchfab.com/3d-models/realistics-grass-03-2589c4f89dac4bbfab7f66be615f262e) by Digital screen official (https://sketchfab.com/ck212575) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
