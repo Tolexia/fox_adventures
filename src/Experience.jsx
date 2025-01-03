@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { OrbitControls, useTexture } from '@react-three/drei'
+import { OrbitControls, useTexture, Sky } from '@react-three/drei'
 import { RigidBody, Physics, CuboidCollider, HeightfieldCollider, useRapier, TrimeshCollider, CylinderCollider, ConvexHullCollider, RoundCuboidCollider, CapsuleCollider, BallCollider, RoundCylinderCollider } from '@react-three/rapier'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
@@ -429,6 +429,7 @@ function Terrain({ foxPosition }) {
 export default function Experience() {
     const orbitControlsRef = useRef()
     const [foxPosition, setFoxPosition] = useState([0, 0, 0])
+    const sunPosition = new THREE.Vector3(1, 2, 3)
 
     const updateFoxPosition = (position) => {
         setFoxPosition([position.x, position.y, position.z])
@@ -454,6 +455,7 @@ export default function Experience() {
                 castShadow 
                 shadow-mapSize={[1024, 1024]}
             />
+            <Sky sunPosition={ sunPosition } />
             <ambientLight intensity={2.4} />
             <OrbitControls 
                 ref={orbitControlsRef}

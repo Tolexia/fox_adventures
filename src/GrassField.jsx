@@ -32,7 +32,7 @@ void main() {
   float heightGradient = smoothstep(0.0, 1.0, vColor.g);
   
   // Assombrissement final
-  float darknessAlpha = 0.05;
+  float darknessAlpha = 0.08;
   float darkness = isEdge * darknessAlpha * heightGradient;
   color -= darkness;
   
@@ -61,7 +61,23 @@ void main() {
   float centerDistance = 0.1;
   float waveFrequency = 1500.0;
 
-  if (color.x > 0.6) {
+  // Calcul de la distance au renard
+  float foxRadius = 0.5; // Rayon d'influence du renard
+  float foxStrength = 0.2; // Force de l'effet
+  vec3 toFox = foxPosition - position;
+  float distanceToFox = length(toFox);
+  
+  // Calcul du vecteur d'écartement
+  if (distanceToFox < foxRadius) {
+    float pushStrength = (1.0 - distanceToFox / foxRadius) * foxStrength;
+    // Plus fort sur la pointe de l'herbe (utilisation de vColor.g pour la hauteur)
+    pushStrength *= smoothstep(0.0, 1.0, vColor.g);
+    // Direction opposée au renard, normalisée et appliquée sur X et Z
+    vec3 pushDir = normalize(vec3(toFox.x, 0.0, toFox.z));
+    cpos.xz -= pushDir.xz * pushStrength;
+  }
+  // Animation de base de l'herbe
+  else if (color.x > 0.6) {
     cpos.x += sin((iTime / waveFrequency) + (uv.x * waveSize)) * tipDistance;
   } else if (color.x > 0.0) {
     cpos.x += sin((iTime / waveFrequency) + (uv.x * waveSize)) * centerDistance;
@@ -73,7 +89,7 @@ void main() {
 
 const PLANE_SIZE = 100
 const BLADE_COUNT = 1000000
-const BLADE_WIDTH = .1
+const BLADE_WIDTH = .09
 const BLADE_HEIGHT = 0.17
 const BLADE_HEIGHT_VARIATION = 0.15
 
