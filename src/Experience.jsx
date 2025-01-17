@@ -264,8 +264,8 @@ function Terrain({ foxPosition }) {
         void main() {
             vUv = uv;
             cloudUV = uv;
-            cloudUV.x += iTime / 300.0;
-            cloudUV.y += iTime / 200.0;
+            // cloudUV.x += iTime / 300.0;
+            // cloudUV.y += iTime / 200.0;
             vColor = vec3(0.5);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }

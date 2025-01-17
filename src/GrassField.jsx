@@ -34,7 +34,7 @@ void main() {
   // Assombrissement final
   float darknessAlpha = 0.08;
   float darkness = isEdge * darknessAlpha * heightGradient;
-  color -= darkness;
+  color -= (darkness * 0.9);
   
   float alpha = 1.0;
   gl_FragColor = vec4(color, alpha);
@@ -58,7 +58,7 @@ void main() {
 
   float waveSize = 5.0;
   float tipDistance = 0.2;
-  float centerDistance = 0.1;
+  float centerDistance = 0.05;
   float waveFrequency = 1500.0;
 
   // Calcul de la distance au renard
@@ -89,7 +89,7 @@ void main() {
 
 const PLANE_SIZE = 100
 const BLADE_COUNT = 1000000
-const BLADE_WIDTH = .09
+const BLADE_WIDTH = .07
 const BLADE_HEIGHT = 0.17
 const BLADE_HEIGHT_VARIATION = 0.15
 
