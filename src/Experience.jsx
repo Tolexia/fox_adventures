@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { useControls } from 'leva'
 import GrassField from './GrassField'
 import { useMemo } from 'react'
+import { saveTerrainData, getTerrainData } from './utils/indexedDB'
 
 function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
     const fox = useRef()
@@ -342,70 +343,113 @@ function Terrain({ foxPosition }) {
     }
 
     useEffect(() => {
-        const nsubdivs = 40 // Augmenter la résolution pour plus de détails
-        const scale = { x: 100, y: 1.5, z: 100 } // Augmenter l'échelle Y pour plus de relief
-        
-        // Générer les hauteurs aléatoires
-        const heights = new Float32Array((nsubdivs + 1) * (nsubdivs + 1))
-        const vertices = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 3)
-        const uvs = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 2)
-        
-        // Générer les hauteurs et les UVs
-        for(let i = 0; i <= nsubdivs; i++) {
-            for(let j = 0; j <= nsubdivs; j++) {
-                const x = j / nsubdivs
-                const z = i / nsubdivs
-                
-                // Générer la hauteur avec notre fonction de bruit
-                const nx = x * Math.PI * 2
-                const nz = z * Math.PI * 2
-                const height = noise(nx, nz)
-                
-                // Index pour le heightfield (column-major order)
-                const heightIndex = j * (nsubdivs + 1) + i
-                heights[heightIndex] = height
+        const initTerrain = async () => {
+            const searchParams = new URLSearchParams(window.location.search)
+            const clearData = searchParams.get('clear')
 
-                // Index pour les vertices (row-major order)
-                const vertexIndex = (i * (nsubdivs + 1) + j) * 3
-                vertices[vertexIndex] = (j / nsubdivs - 0.5) * scale.x     // x
-                vertices[vertexIndex + 1] = height * scale.y               // y
-                vertices[vertexIndex + 2] = (i / nsubdivs - 0.5) * scale.z // z
+            if (clearData) {
+                // Générer un nouveau terrain
+                generateNewTerrain()
+                return
+            }
 
-                // Index pour les UVs
-                const uvIndex = (i * (nsubdivs + 1) + j) * 2
-                uvs[uvIndex] = x     // u
-                uvs[uvIndex + 1] = z // v
+            // Essayer de récupérer les données existantes
+            const savedData = await getTerrainData()
+            if (savedData) {
+                // Recréer la géométrie à partir des données sauvegardées
+                const geometry = new THREE.BufferGeometry()
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(savedData.vertices), 3))
+                geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(savedData.uvs), 2))
+                geometry.setIndex(savedData.indices)
+                geometry.computeVertexNormals()
+
+                setTerrainData({
+                    heights: new Float32Array(savedData.heights),
+                    geometry,
+                    scale: savedData.scale,
+                    nsubdivs: savedData.nsubdivs,
+                    noise
+                })
+            } else {
+                // Générer un nouveau terrain
+                generateNewTerrain()
             }
         }
 
-        // Créer la géométrie du terrain
-        const geometry = new THREE.BufferGeometry()
-        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
-        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+        const generateNewTerrain = () => {
+            const nsubdivs = 40
+            const scale = { x: 100, y: 1.5, z: 100 }
+            
+            const heights = new Float32Array((nsubdivs + 1) * (nsubdivs + 1))
+            const vertices = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 3)
+            const uvs = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 2)
+            
+            // Générer les hauteurs et les UVs
+            for(let i = 0; i <= nsubdivs; i++) {
+                for(let j = 0; j <= nsubdivs; j++) {
+                    const x = j / nsubdivs
+                    const z = i / nsubdivs
+                    
+                    const nx = x * Math.PI * 2
+                    const nz = z * Math.PI * 2
+                    const height = noise(nx, nz)
+                    
+                    const heightIndex = j * (nsubdivs + 1) + i
+                    heights[heightIndex] = height
 
-        // Créer les faces
-        const indices = []
-        for(let i = 0; i < nsubdivs; i++) {
-            for(let j = 0; j < nsubdivs; j++) {
-                const a = i * (nsubdivs + 1) + j
-                const b = a + 1
-                const c = (i + 1) * (nsubdivs + 1) + j
-                const d = c + 1
+                    const vertexIndex = (i * (nsubdivs + 1) + j) * 3
+                    vertices[vertexIndex] = (j / nsubdivs - 0.5) * scale.x
+                    vertices[vertexIndex + 1] = height * scale.y
+                    vertices[vertexIndex + 2] = (i / nsubdivs - 0.5) * scale.z
 
-                indices.push(a, c, b)
-                indices.push(b, c, d)
+                    const uvIndex = (i * (nsubdivs + 1) + j) * 2
+                    uvs[uvIndex] = x
+                    uvs[uvIndex + 1] = z
+                }
             }
-        }
-        geometry.setIndex(indices)
-        geometry.computeVertexNormals()
 
-        setTerrainData({
-            heights,
-            geometry,
-            scale,
-            nsubdivs,
-            noise
-        })
+            // Créer les faces
+            const indices = []
+            for(let i = 0; i < nsubdivs; i++) {
+                for(let j = 0; j < nsubdivs; j++) {
+                    const a = i * (nsubdivs + 1) + j
+                    const b = a + 1
+                    const c = (i + 1) * (nsubdivs + 1) + j
+                    const d = c + 1
+
+                    indices.push(a, c, b)
+                    indices.push(b, c, d)
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry()
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+            geometry.setIndex(indices)
+            geometry.computeVertexNormals()
+
+            const newTerrainData = {
+                heights: Array.from(heights),
+                vertices: Array.from(vertices),
+                uvs: Array.from(uvs),
+                indices,
+                scale,
+                nsubdivs
+            }
+
+            // Sauvegarder les données dans IndexedDB
+            saveTerrainData(newTerrainData)
+
+            setTerrainData({
+                heights,
+                geometry,
+                scale,
+                nsubdivs,
+                noise
+            })
+        }
+
+        initTerrain()
     }, [])
 
     if (!terrainData) return null
