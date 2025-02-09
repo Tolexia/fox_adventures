@@ -67,9 +67,16 @@ function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
     }
 
     useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search)
+        const clearPosition = searchParams.get('clear')
+        if (clearPosition) {
+            localStorage.clear()
+        }
+
         // Initialisation des animations
         if (actions['Survey']) {
             Object.values(actions).forEach(action => {
+
                 action.reset()
                 action.setEffectiveTimeScale(1)
                 action.setEffectiveWeight(0)
@@ -428,11 +435,19 @@ function Terrain({ foxPosition }) {
 
 export default function Experience() {
     const orbitControlsRef = useRef()
-    const [foxPosition, setFoxPosition] = useState([0, 0, 0])
+    const [foxPosition, setFoxPosition] = useState(() => {
+        const savedPosition = localStorage.getItem('foxPosition') || "[0, 0, 0]"
+        // const savedPosition = "[0, 0, 0]"
+        const objectPosition = JSON.parse(savedPosition)
+        objectPosition[1] += 1
+        return objectPosition
+    })
     const sunPosition = new THREE.Vector3(1, 2, 3)
 
     const updateFoxPosition = (position) => {
-        setFoxPosition([position.x, position.y, position.z])
+        const newPosition = [position.x, position.y, position.z]
+        setFoxPosition(newPosition)
+        localStorage.setItem('foxPosition', JSON.stringify(newPosition))
     }
 
     return (
@@ -443,7 +458,7 @@ export default function Experience() {
              >
                 <Terrain foxPosition={foxPosition} />
                 <Fox 
-                    position={[0, 2.5, 0]} 
+                    position={foxPosition} 
                     orbitControlsRef={orbitControlsRef}
                     onPositionUpdate={updateFoxPosition}
                 />
