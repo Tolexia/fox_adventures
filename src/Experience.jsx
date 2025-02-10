@@ -12,7 +12,7 @@ import { saveTerrainData, getTerrainData } from './utils/indexedDB'
 function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
     const fox = useRef()
     const rigidBody = useRef()
-    const { scene, animations } = useGLTF('/models/Fox/glTF/Fox.gltf')
+    const { scene, animations } = useGLTF('./models/Fox/glTF/Fox.gltf')
     const { actions } = useAnimations(animations, fox)
     const [currentAnimation, setCurrentAnimation] = useState('Survey')
     const { rapier, world } = useRapier()
