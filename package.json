@@ -1,7 +1,7 @@
 {
-  "name": "laptop-presentation",
+  "name": "fox_adventures",
   "private": true,
-  "homepage": "https://tolexia.github.io/hill_fox",
+  "homepage": "https://tolexia.github.io/fox_adventures",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
