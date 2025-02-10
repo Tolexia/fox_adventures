@@ -252,8 +252,8 @@ function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
 }
 
 function Terrain({ foxPosition }) {
-    const grassTexture = useTexture('/grass.jpg')
-    const cloudTexture = useTexture('/cloud.jpg')
+    const grassTexture = useTexture('./grass.jpg')
+    const cloudTexture = useTexture('./cloud.jpg')
     const [terrainData, setTerrainData] = useState(null)
     const meshRef = useRef()
     

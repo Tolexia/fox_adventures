@@ -150,8 +150,8 @@ export default function GrassField({ terrainData, foxPosition }) {
   const meshRef = useRef()
   const startTime = useRef(Date.now())
 
-  const grassTexture = useTexture('/grass.jpg')
-  const cloudTexture = useTexture('/cloud.jpg')
+  const grassTexture = useTexture('./grass.jpg')
+  const cloudTexture = useTexture('./cloud.jpg')
   
   cloudTexture.wrapS = cloudTexture.wrapT = THREE.RepeatWrapping
 
