@@ -480,7 +480,7 @@ function Terrain({ foxPosition }) {
 export default function Experience() {
     const orbitControlsRef = useRef()
     const [foxPosition, setFoxPosition] = useState(() => {
-        const savedPosition = localStorage.getItem('foxPosition') || "[0, 0, 0]"
+        const savedPosition = localStorage.getItem('foxPosition') || "[0, 1, 0]"
         // const savedPosition = "[0, 0, 0]"
         const objectPosition = JSON.parse(savedPosition)
         objectPosition[1] += 1
