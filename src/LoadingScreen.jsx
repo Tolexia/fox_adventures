@@ -1,30 +1,39 @@
 import { useProgress } from '@react-three/drei'
 import { useEffect } from 'react'
+import useLoadingStore from './stores/useLoadingStore'
 
-export default function LoadingScreen({ started, onStarted }) {
-    const { progress, total, loaded, item } = useProgress()
+export default function LoadingScreen() {
+    const { progress } = useProgress()
+    const grassLoaded = useLoadingStore((state) => state.grassLoaded)
+    const started = useLoadingStore((state) => state.started)
+    const setStarted = useLoadingStore((state) => state.setStarted)
 
     useEffect(() => {
-        if (progress === 100) {
-            setTimeout(() => {
-                onStarted()
-            }, 500)
+        if (progress === 100 && grassLoaded && !started) {
+            setStarted(true)
         }
-    }, [progress, onStarted])
+    }, [progress, grassLoaded, started, setStarted])
+
+    if (started) return null
 
     return (
-        <div className={`loadingScreen ${started ? 'loadingScreen--started' : ''}`}>
-            <div className="loadingScreen__progress">
-                <div className="loadingScreen__progress__value" style={{
-                    width: `${progress}%`
-                }}></div>
-            </div>
+        <div className="loadingScreen">
             <div className="loadingScreen__text">
-                {/* {progress.toFixed(0)}% • {loaded}/{total} ressources chargées */}
+                { `Loading ${progress.toFixed(0)}%`}
             </div>
-            <div className="loadingScreen__item">
-                {/* {item} */}
+            <div className="loadingScreen__progress">
+                <div 
+                    className="loadingScreen__progress__value" 
+                    style={{
+                        width: `${progress}%`
+                    }}
+                />
             </div>
+            {progress === 100 && !grassLoaded && (
+                <div className="loadingScreen__text">
+                    Few details to set up...
+                </div>
+            )}
         </div>
     )
 } 

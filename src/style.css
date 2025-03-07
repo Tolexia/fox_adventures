@@ -70,3 +70,35 @@ body,
     font-family: Arial, sans-serif;
     font-size: 12px;
 }
+
+.loading-grass {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    color: white !important;
+    padding: 20px !important;
+    border-radius: 10px !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 16px !important;
+    z-index: 1000 !important;
+    pointer-events: none !important;
+    text-align: center !important;
+    min-width: 200px !important;
+}
+
+.loading-grass__progress {
+    width: 100% !important;
+    height: 4px !important;
+    background: #2a2a2a !important;
+    border-radius: 2px !important;
+    margin-top: 10px !important;
+}
+
+.loading-grass__progress__value {
+    height: 100% !important;
+    background: #4CAF50 !important;
+    border-radius: 2px !important;
+    transition: width 0.3s ease-in-out !important;
+}

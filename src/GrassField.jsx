@@ -1,7 +1,8 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useTexture } from '@react-three/drei'
+import { useTexture, Html } from '@react-three/drei'
+import useLoadingStore from './stores/useLoadingStore'
 
 const fragmentShader = `
 uniform sampler2D textures[2];
@@ -149,40 +150,61 @@ function generateBlade(center, vArrOffset, uv) {
 export default function GrassField({ terrainData, foxPosition }) {
   const meshRef = useRef()
   const startTime = useRef(Date.now())
+  const workerRef = useRef()
+  const [geometry, setGeometry] = useState(null)
+  const [progress, setProgress] = useState(0)
+  const setGrassLoaded = useLoadingStore((state) => state.setGrassLoaded)
 
   const grassTexture = useTexture('./grass.jpg')
   const cloudTexture = useTexture('./cloud.jpg')
   
   cloudTexture.wrapS = cloudTexture.wrapT = THREE.RepeatWrapping
 
-  const getTerrainHeight = (x, z) => {
-    if (!terrainData) return 0
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('./utils/terrainWorker.js', import.meta.url))
 
-    // Convertir les coordonnées mondiales en coordonnées de la grille du terrain
-    const gridX = Math.max(0, Math.min(terrainData.nsubdivs, ((x / terrainData.scale.x) + 0.5) * terrainData.nsubdivs))
-    const gridZ = Math.max(0, Math.min(terrainData.nsubdivs, ((z / terrainData.scale.z) + 0.5) * terrainData.nsubdivs))
+    workerRef.current.onmessage = (event) => {
+      const { type, data } = event.data
+      switch (type) {
+        case 'grassGeometry':
+          const geom = new THREE.BufferGeometry()
+          geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data.positions), 3))
+          geom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uvs), 2))
+          geom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(data.colors), 3))
+          geom.setIndex(data.indices)
+          geom.computeVertexNormals()
+          geom.computeBoundingSphere()
+          setGeometry(geom)
+          setProgress(100)
+          setGrassLoaded(true)
+          break
 
-    // Obtenir les indices des points de la grille les plus proches
-    const x0 = Math.floor(gridX)
-    const z0 = Math.floor(gridZ)
-    const x1 = Math.min(x0 + 1, terrainData.nsubdivs)
-    const z1 = Math.min(z0 + 1, terrainData.nsubdivs)
+        case 'progress':
+          setProgress(data)
+          break
+      }
+    }
 
-    // Calculer les poids pour l'interpolation bilinéaire
-    const wx = gridX - x0
-    const wz = gridZ - z0
+    return () => {
+      workerRef.current?.terminate()
+    }
+  }, [setGrassLoaded])
 
-    // Obtenir les hauteurs aux quatre coins
-    const h00 = terrainData.heights[x0 * (terrainData.nsubdivs + 1) + z0] * terrainData.scale.y
-    const h10 = terrainData.heights[x1 * (terrainData.nsubdivs + 1) + z0] * terrainData.scale.y
-    const h01 = terrainData.heights[x0 * (terrainData.nsubdivs + 1) + z1] * terrainData.scale.y
-    const h11 = terrainData.heights[x1 * (terrainData.nsubdivs + 1) + z1] * terrainData.scale.y
+  useEffect(() => {
+    if (!terrainData) return
 
-    // Interpolation bilinéaire
-    const h0 = h00 * (1 - wx) + h10 * wx
-    const h1 = h01 * (1 - wx) + h11 * wx
-    return h0 * (1 - wz) + h1 * wz
-  }
+    // Envoyer les données nécessaires au Worker
+    const heightData = {
+      heights: Array.from(terrainData.heights),
+      scale: terrainData.scale,
+      nsubdivs: terrainData.nsubdivs
+    }
+
+    workerRef.current.postMessage({
+      type: 'generateGrass',
+      data: { terrainData: heightData }
+    })
+  }, [terrainData])
 
   const uniforms = useMemo(() => ({
     textures: { value: [grassTexture, cloudTexture] },
@@ -192,67 +214,10 @@ export default function GrassField({ terrainData, foxPosition }) {
 
   useFrame((state, delta) => {
     if (meshRef.current) {
-    //   uniforms.iTime.value = state.clock.elapsedTime
-        uniforms.iTime.value = Date.now() - startTime.current
-        uniforms.foxPosition.value.set(...foxPosition)
+      uniforms.iTime.value = Date.now() - startTime.current
+      uniforms.foxPosition.value.set(...foxPosition)
     }
   })
-
-  const geometry = useMemo(() => {
-    if (!terrainData) return null
-
-    const positions = []
-    const uvs = []
-    const indices = []
-    const colors = []
-
-    // Distribution uniforme avec bruit pour éviter la régularité
-    const gridSize = Math.sqrt(BLADE_COUNT)
-    const cellSize = PLANE_SIZE / gridSize
-
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        // Position de base sur la grille
-        const baseX = (i / gridSize - 0.5) * PLANE_SIZE
-        const baseZ = (j / gridSize - 0.5) * PLANE_SIZE
-
-        // Ajout d'un décalage aléatoire pour éviter l'aspect grille
-        const offsetX = (Math.random() - 0.5) * cellSize * 0.8
-        const offsetZ = (Math.random() - 0.5) * cellSize * 0.8
-
-        const x = baseX + offsetX
-        const z = baseZ + offsetZ
-
-        // Vérifier que nous sommes dans les limites du terrain
-        if (Math.abs(x) <= PLANE_SIZE / 2 && Math.abs(z) <= PLANE_SIZE / 2) {
-          const y = getTerrainHeight(x, z)
-          const pos = new THREE.Vector3(x, y, z)
-
-          const uv = [
-            convertRange(x, -PLANE_SIZE * 0.5, PLANE_SIZE * 0.5, 0, 1),
-            convertRange(z, -PLANE_SIZE * 0.5, PLANE_SIZE * 0.5, 0, 1)
-          ]
-
-          const blade = generateBlade(pos, positions.length / 3, uv)
-          blade.verts.forEach(vert => {
-            positions.push(...vert.pos)
-            uvs.push(...vert.uv)
-            colors.push(...vert.color)
-          })
-          blade.indices.forEach(indice => indices.push(indice))
-        }
-      }
-    }
-
-    const geom = new THREE.BufferGeometry()
-    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3))
-    geom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2))
-    geom.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3))
-    geom.setIndex(indices)
-    geom.computeVertexNormals()
-
-    return geom
-  }, [terrainData])
 
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms,
@@ -264,6 +229,10 @@ export default function GrassField({ terrainData, foxPosition }) {
   }), [uniforms])
 
   if (!terrainData) return null
+
+  if (!geometry) {
+    return null
+  }
 
   return (
     <mesh ref={meshRef} geometry={geometry} material={material} />
