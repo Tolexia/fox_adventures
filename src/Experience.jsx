@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { OrbitControls, useTexture, Sky } from '@react-three/drei'
 import { RigidBody, Physics, CuboidCollider, HeightfieldCollider, useRapier, TrimeshCollider, CylinderCollider, ConvexHullCollider, RoundCuboidCollider, CapsuleCollider, BallCollider, RoundCylinderCollider } from '@react-three/rapier'
@@ -6,6 +6,8 @@ import { useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
 import { useControls } from 'leva'
 import GrassField from './GrassField'
+import { useMemo } from 'react'
+import { saveTerrainData, getTerrainData } from './utils/indexedDB'
 
 function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
     const fox = useRef()
@@ -254,7 +256,6 @@ function Terrain({ foxPosition }) {
     const cloudTexture = useTexture('./cloud.jpg')
     const [terrainData, setTerrainData] = useState(null)
     const meshRef = useRef()
-    const workerRef = useRef()
     
     grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping
     cloudTexture.wrapS = cloudTexture.wrapT = THREE.RepeatWrapping
@@ -342,45 +343,113 @@ function Terrain({ foxPosition }) {
     }
 
     useEffect(() => {
-        // Créer le Worker
-        workerRef.current = new Worker(new URL('./utils/terrainWorker.js', import.meta.url))
+        const initTerrain = async () => {
+            const searchParams = new URLSearchParams(window.location.search)
+            const clearData = searchParams.get('clear')
 
-        // Gérer les messages du Worker
-        workerRef.current.onmessage = (event) => {
-            const { type, data } = event.data
+            if (clearData) {
+                // Générer un nouveau terrain
+                generateNewTerrain()
+                return
+            }
 
-            switch (type) {
-                case 'terrainData':
-                    // Recréer la géométrie à partir des données du Worker
-                    const geometry = new THREE.BufferGeometry()
-                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data.vertices), 3))
-                    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uvs), 2))
-                    geometry.setIndex(data.indices)
-                    geometry.computeVertexNormals()
+            // Essayer de récupérer les données existantes
+            const savedData = await getTerrainData()
+            if (savedData) {
+                // Recréer la géométrie à partir des données sauvegardées
+                const geometry = new THREE.BufferGeometry()
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(savedData.vertices), 3))
+                geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(savedData.uvs), 2))
+                geometry.setIndex(savedData.indices)
+                geometry.computeVertexNormals()
 
-                    setTerrainData({
-                        heights: new Float32Array(data.heights),
-                        geometry,
-                        scale: data.scale,
-                        nsubdivs: data.nsubdivs
-                    })
-                    break
-
-                case 'error':
-                    console.error(data.error)
-                    break
+                setTerrainData({
+                    heights: new Float32Array(savedData.heights),
+                    geometry,
+                    scale: savedData.scale,
+                    nsubdivs: savedData.nsubdivs,
+                    noise
+                })
+            } else {
+                // Générer un nouveau terrain
+                generateNewTerrain()
             }
         }
 
-        // Initialiser le terrain
-        workerRef.current.postMessage({
-            type: 'init',
-            data: { url: window.location.search }
-        })
+        const generateNewTerrain = () => {
+            const nsubdivs = 40
+            const scale = { x: 100, y: 1.5, z: 100 }
+            
+            const heights = new Float32Array((nsubdivs + 1) * (nsubdivs + 1))
+            const vertices = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 3)
+            const uvs = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 2)
+            
+            // Générer les hauteurs et les UVs
+            for(let i = 0; i <= nsubdivs; i++) {
+                for(let j = 0; j <= nsubdivs; j++) {
+                    const x = j / nsubdivs
+                    const z = i / nsubdivs
+                    
+                    const nx = x * Math.PI * 2
+                    const nz = z * Math.PI * 2
+                    const height = noise(nx, nz)
+                    
+                    const heightIndex = j * (nsubdivs + 1) + i
+                    heights[heightIndex] = height
 
-        return () => {
-            workerRef.current?.terminate()
+                    const vertexIndex = (i * (nsubdivs + 1) + j) * 3
+                    vertices[vertexIndex] = (j / nsubdivs - 0.5) * scale.x
+                    vertices[vertexIndex + 1] = height * scale.y
+                    vertices[vertexIndex + 2] = (i / nsubdivs - 0.5) * scale.z
+
+                    const uvIndex = (i * (nsubdivs + 1) + j) * 2
+                    uvs[uvIndex] = x
+                    uvs[uvIndex + 1] = z
+                }
+            }
+
+            // Créer les faces
+            const indices = []
+            for(let i = 0; i < nsubdivs; i++) {
+                for(let j = 0; j < nsubdivs; j++) {
+                    const a = i * (nsubdivs + 1) + j
+                    const b = a + 1
+                    const c = (i + 1) * (nsubdivs + 1) + j
+                    const d = c + 1
+
+                    indices.push(a, c, b)
+                    indices.push(b, c, d)
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry()
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3))
+            geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+            geometry.setIndex(indices)
+            geometry.computeVertexNormals()
+
+            const newTerrainData = {
+                heights: Array.from(heights),
+                vertices: Array.from(vertices),
+                uvs: Array.from(uvs),
+                indices,
+                scale,
+                nsubdivs
+            }
+
+            // Sauvegarder les données dans IndexedDB
+            saveTerrainData(newTerrainData)
+
+            setTerrainData({
+                heights,
+                geometry,
+                scale,
+                nsubdivs,
+                noise
+            })
         }
+
+        initTerrain()
     }, [])
 
     if (!terrainData) return null
@@ -411,7 +480,7 @@ function Terrain({ foxPosition }) {
 export default function Experience() {
     const orbitControlsRef = useRef()
     const [foxPosition, setFoxPosition] = useState(() => {
-        const savedPosition = localStorage.getItem('foxPosition') || "[0, 0, 0]"
+        const savedPosition = localStorage.getItem('foxPosition') || "[0, 1, 0]"
         // const savedPosition = "[0, 0, 0]"
         const objectPosition = JSON.parse(savedPosition)
         objectPosition[1] += 1

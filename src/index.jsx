@@ -3,13 +3,15 @@ import ReactDOM from 'react-dom/client'
 import { Canvas } from '@react-three/fiber'
 import Experience from './Experience.jsx'
 import * as THREE from 'three'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import LoadingScreen from './LoadingScreen'
 
 function App() {
+    const [started, setStarted] = useState(false)
+
     return (
         <>
-            <LoadingScreen />
+            <LoadingScreen started={started} onStarted={() => setStarted(true)} />
             <Canvas
                 className="r3f"
                 onCreated={({ gl }) => { gl.toneMapping = THREE.NoToneMapping }}
@@ -28,14 +30,5 @@ function App() {
     )
 }
 
-let root
-const rootElement = document.querySelector('#root')
-
-if (!rootElement._reactRootContainer) {
-    root = ReactDOM.createRoot(rootElement)
-    rootElement._reactRootContainer = root
-} else {
-    root = rootElement._reactRootContainer
-}
-
+const root = ReactDOM.createRoot(document.querySelector('#root'))
 root.render(<App />)
