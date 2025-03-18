@@ -1,17 +1,22 @@
 import { useProgress } from '@react-three/drei'
 import { useEffect } from 'react'
+import useGame from './utils/useGame'
 
-export default function LoadingScreen({ started, onStarted }) {
+export default function LoadingScreen() {
     const { progress, total, loaded, item } = useProgress()
+    const { isInitialized, initialize } = useGame()
 
+    const started = !isInitialized
+    
     useEffect(() => {
         if (progress === 100) {
             setTimeout(() => {
-                onStarted()
+                initialize()
             }, 500)
         }
-    }, [progress, onStarted])
-
+    }, [progress, initialize])
+    if(isInitialized) return null
+    
     return (
         <div className={`loadingScreen ${started ? 'loadingScreen--started' : ''}`}>
             <div className="loadingScreen__progress">

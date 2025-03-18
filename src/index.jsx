@@ -3,15 +3,15 @@ import ReactDOM from 'react-dom/client'
 import { Canvas } from '@react-three/fiber'
 import Experience from './Experience.jsx'
 import * as THREE from 'three'
-import { Suspense, useState } from 'react'
+import { Suspense } from 'react'
 import LoadingScreen from './LoadingScreen'
 
 function App() {
-    const [started, setStarted] = useState(false)
+   
 
     return (
         <>
-            <LoadingScreen started={started} onStarted={() => setStarted(true)} />
+            <LoadingScreen />
             <Canvas
                 className="r3f"
                 onCreated={({ gl }) => { gl.toneMapping = THREE.NoToneMapping }}

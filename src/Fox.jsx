@@ -1,20 +1,38 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, useRapier, BallCollider } from '@react-three/rapier'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
+import useGame from './utils/useGame'
 
-export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPositionUpdate }) {
+export default function Fox({ orbitControlsRef }) {
     const fox = useRef()
     const rigidBody = useRef()
     const { scene, animations } = useGLTF('./models/Fox/glTF/Fox.gltf')
     const { actions } = useAnimations(animations, fox)
-    const [currentAnimation, setCurrentAnimation] = useState('Survey')
+    const currentAnimation = useRef('Survey')
     const { rapier, world } = useRapier()
+
+    let foxPosition = useGame((state) => state.foxPosition)
+    const updateFoxPosition = useGame((state) => state.updateFoxPosition)
+
+    console.log("render Fox")
+
+    const onPositionUpdate = (position) => {
+        if(position.y < -10) {
+            position.x = 0
+            position.y = 0
+            position.z = 0
+        }
+        const newPosition = [position.x, position.y, position.z]
+        if (JSON.stringify(newPosition) !== JSON.stringify(foxPosition)) {
+            updateFoxPosition(newPosition)
+        }
+    }
 
     // Vecteurs temporaires pour les calculs
     const walkDirection = new THREE.Vector3()
-    const [keysPressed, setKeysPressed] = useState({})
+    const keysPressed = useRef({})
 
     const foxControls = {
         walkVelocity:  2,
@@ -23,14 +41,15 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            setKeysPressed(prev => ({ ...prev, [e.code]: true }))
+            keysPressed.current = { ...keysPressed.current, [e.code]: true }
             if (e.code === 'ShiftLeft') {
-                setCurrentAnimation(currentAnimation === 'Run' ? 'Walk' : 'Run')
+                currentAnimation.current = currentAnimation.current === 'Run' ? 'Walk' : 'Run'
+                updateAnimation()
             }
         }
 
         const handleKeyUp = (e) => {
-            setKeysPressed(prev => ({ ...prev, [e.code]: false }))
+            keysPressed.current = { ...keysPressed.current, [e.code]: false }
         }
 
         window.addEventListener('keydown', handleKeyDown)
@@ -67,6 +86,7 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
         const clearPosition = searchParams.get('clear')
         if (clearPosition) {
             localStorage.clear()
+            foxPosition = [0, 1, 0]
         }
 
         // Initialisation des animations
@@ -82,11 +102,12 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
         }
     }, [actions])
 
+    const updateAnimation = () => {
+        fadeToAction(currentAnimation.current, 0.2)
+    }
     useEffect(() => {
-        if (currentAnimation && actions[currentAnimation]) {
-            fadeToAction(currentAnimation, 0.2)
-        }
-    }, [currentAnimation, actions])
+        updateAnimation()
+    }, [currentAnimation.current, actions])
 
     useFrame((state, delta) => {
         if (!rigidBody.current || !orbitControlsRef.current) return
@@ -115,7 +136,7 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
         walkDirection.set(0, 0, 0)
         let velocity = 0
 
-        const directionPressed = ['KeyW', 'KeyS', 'KeyA', 'KeyD'].some(key => keysPressed[key])
+        const directionPressed = ['KeyW', 'KeyS', 'KeyA', 'KeyD'].some(key => keysPressed.current[key])
         
         if (directionPressed && isGrounded) {
             // Calculer la direction par rapport à la caméra
@@ -132,10 +153,10 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
             walkDirection.set(0, 0, 0)
 
             // Combiner les directions selon les touches pressées
-            const isMovingForward = keysPressed['KeyW']
-            const isMovingBackward = keysPressed['KeyS']
-            const isMovingLeft = keysPressed['KeyA']
-            const isMovingRight = keysPressed['KeyD']
+            const isMovingForward = keysPressed.current['KeyW']
+            const isMovingBackward = keysPressed.current['KeyS']
+            const isMovingLeft = keysPressed.current['KeyA']
+            const isMovingRight = keysPressed.current['KeyD']
 
             if (isMovingForward) walkDirection.add(cameraForward)
             if (isMovingBackward) walkDirection.sub(cameraForward)
@@ -156,10 +177,10 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
             }
 
             // Vitesse
-            velocity = currentAnimation === 'Run' ? foxControls.runVelocity : foxControls.walkVelocity
+            velocity = currentAnimation.current === 'Run' ? foxControls.runVelocity : foxControls.walkVelocity
 
             // Ajuster la vitesse de l'animation en fonction de la direction
-            const currentAction = actions[currentAnimation]
+            const currentAction = actions[currentAnimation.current]
             if (currentAction) {
                 // Vitesse normale pour avant/arrière
                 let timeScale = 1
@@ -171,11 +192,13 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
             }
 
             // Animation
-            if (currentAnimation === 'Survey') {
-                setCurrentAnimation('Walk')
+            if (currentAnimation.current === 'Survey') {
+                currentAnimation.current = 'Walk'
+                updateAnimation()
             }
-        } else if (currentAnimation !== 'Survey') {
-            setCurrentAnimation('Survey')
+        } else if (currentAnimation.current !== 'Survey') {
+            currentAnimation.current = 'Survey'
+            updateAnimation()
         }
 
         // Appliquer le mouvement
@@ -200,7 +223,7 @@ export default function Fox({ position = [0, 0, 0], orbitControlsRef, onPosition
         <RigidBody  
             ref={rigidBody}
             type="dynamic" 
-            position={position} 
+            position={foxPosition} 
             colliders={false}
             linearDamping={12}
             angularDamping={12}

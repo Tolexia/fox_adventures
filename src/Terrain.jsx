@@ -8,11 +8,12 @@ import GrassField from './GrassField'
 import { useTexture } from '@react-three/drei'
 import noise from './utils/noise'
 
-export default function Terrain({ foxPosition }) {
+export default function Terrain() {
     const grassTexture = useTexture('./grass.jpg')
     const cloudTexture = useTexture('./cloud.jpg')
     const [terrainData, setTerrainData] = useState(null)
     const meshRef = useRef()
+    console.log("render Terrain")
     
     grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping
     cloudTexture.wrapS = cloudTexture.wrapT = THREE.RepeatWrapping
@@ -90,6 +91,7 @@ export default function Terrain({ foxPosition }) {
             // Essayer de récupérer les données existantes
             const savedData = await getTerrainData()
             if (savedData) {
+                console.log("savedData.vertices", savedData.vertices)
                 // Recréer la géométrie à partir des données sauvegardées
                 const geometry = new THREE.BufferGeometry()
                 geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(savedData.vertices), 3))
@@ -106,6 +108,7 @@ export default function Terrain({ foxPosition }) {
                 })
             } else {
                 // Générer un nouveau terrain
+                console.log("generateNewTerrain")
                 generateNewTerrain()
             }
         }
@@ -206,7 +209,7 @@ export default function Terrain({ foxPosition }) {
                 args={[40, 40, terrainData.heights, terrainData.scale]}
                 restitution={0.2}
             />
-            <GrassField terrainData={terrainData} foxPosition={foxPosition} />
+            <GrassField terrainData={terrainData}  />
         </RigidBody>
     )
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { OrbitControls, Sky } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import * as THREE from 'three'
@@ -8,20 +8,8 @@ import Terrain from './Terrain'
 
 export default function Experience() {
     const orbitControlsRef = useRef()
-    const [foxPosition, setFoxPosition] = useState(() => {
-        const savedPosition = localStorage.getItem('foxPosition') || "[0, 1, 0]"
-        // const savedPosition = "[0, 0, 0]"
-        const objectPosition = JSON.parse(savedPosition)
-        objectPosition[1] += 1
-        return objectPosition
-    })
+    
     const sunPosition = new THREE.Vector3(1, 2, 3)
-
-    const updateFoxPosition = (position) => {
-        const newPosition = [position.x, position.y, position.z]
-        setFoxPosition(newPosition)
-        localStorage.setItem('foxPosition', JSON.stringify(newPosition))
-    }
 
     return (
         <>
@@ -29,11 +17,9 @@ export default function Experience() {
             // debug
              gravity={[0, -9.81, 0]}
              >
-                <Terrain foxPosition={foxPosition} />
+                <Terrain />
                 <Fox 
-                    position={foxPosition} 
                     orbitControlsRef={orbitControlsRef}
-                    onPositionUpdate={updateFoxPosition}
                 />
             </Physics>
 
