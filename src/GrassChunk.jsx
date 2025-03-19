@@ -88,8 +88,6 @@ void main() {
 }
 `
 
-const CHUNK_SIZE = 10
-const PLANE_SIZE = 100
 const BLADE_COUNT = 1000
 const BLADE_WIDTH = .07
 const BLADE_HEIGHT = 0.17
@@ -148,10 +146,12 @@ function generateBlade(center, vArrOffset, uv) {
   return { verts, indices }
 }
 
-export default function GrassChunk({ terrainData, offsetX, offsetZ }) {
+export default function GrassChunk({ terrainData, offsetX, offsetZ, chunkSize, planeSize }) {
   const meshRef = useRef()
   const startTime = useRef(Date.now())
   const foxPosition = useGame((state) => state.foxPosition)
+  const CHUNK_SIZE = chunkSize
+  const PLANE_SIZE = planeSize
 
 //   console.log("offsetX, offsetZ")
 //   console.log(offsetX, offsetZ)
@@ -189,6 +189,34 @@ export default function GrassChunk({ terrainData, offsetX, offsetZ }) {
     const h1 = h01 * (1 - wx) + h11 * wx
     return h0 * (1 - wz) + h1 * wz
   }
+//   const getTerrainHeight = (x, z) => {
+//     if (!terrainData) return 0
+
+//     // Convertir les coordonnées mondiales en coordonnées de la grille du terrain
+//     const gridX = Math.max(0, Math.min(terrainData.nsubdivs, ((x / terrainData.scale.x) + 0.5) * terrainData.nsubdivs))
+//     const gridZ = Math.max(0, Math.min(terrainData.nsubdivs, ((z / terrainData.scale.z) + 0.5) * terrainData.nsubdivs))
+
+//     // Obtenir les indices des points de la grille les plus proches
+//     const x0 = Math.floor(gridX)
+//     const z0 = Math.floor(gridZ)
+//     const x1 = Math.min(x0 + 1, terrainData.nsubdivs)
+//     const z1 = Math.min(z0 + 1, terrainData.nsubdivs)
+
+//     // Calculer les poids pour l'interpolation bilinéaire
+//     const wx = gridX - x0
+//     const wz = gridZ - z0
+
+//     // Obtenir les hauteurs aux quatre coins
+//     const h00 = terrainData.heights[x0 * (terrainData.nsubdivs + 1) + z0] * terrainData.scale.y
+//     const h10 = terrainData.heights[x1 * (terrainData.nsubdivs + 1) + z0] * terrainData.scale.y
+//     const h01 = terrainData.heights[x0 * (terrainData.nsubdivs + 1) + z1] * terrainData.scale.y
+//     const h11 = terrainData.heights[x1 * (terrainData.nsubdivs + 1) + z1] * terrainData.scale.y
+
+//     // Interpolation bilinéaire
+//     const h0 = h00 * (1 - wx) + h10 * wx
+//     const h1 = h01 * (1 - wx) + h11 * wx
+//     return h0 * (1 - wz) + h1 * wz
+//   }
 
   const uniforms = useMemo(() => ({
     textures: { value: [grassTexture, cloudTexture] },

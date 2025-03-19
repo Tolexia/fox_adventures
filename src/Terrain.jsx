@@ -8,6 +8,9 @@ import GrassField from './GrassField'
 import { useTexture } from '@react-three/drei'
 import noise from './utils/noise'
 
+const PLANE_SIZE = 100
+const CHUNK_SIZE = 10
+
 export default function Terrain() {
     const grassTexture = useTexture('./grass.jpg')
     const cloudTexture = useTexture('./cloud.jpg')
@@ -114,8 +117,8 @@ export default function Terrain() {
         }
 
         const generateNewTerrain = () => {
-            const nsubdivs = 40
-            const scale = { x: 100, y: 1.5, z: 100 }
+            const nsubdivs = PLANE_SIZE / CHUNK_SIZE
+            const scale = { x: PLANE_SIZE, y: 1.5, z: PLANE_SIZE }
             
             const heights = new Float32Array((nsubdivs + 1) * (nsubdivs + 1))
             const vertices = new Float32Array((nsubdivs + 1) * (nsubdivs + 1) * 3)
@@ -206,10 +209,10 @@ export default function Terrain() {
                 /> */}
             </mesh>
             <HeightfieldCollider 
-                args={[40, 40, terrainData.heights, terrainData.scale]}
+                args={[CHUNK_SIZE, CHUNK_SIZE, terrainData.heights, terrainData.scale]}
                 restitution={0.2}
             />
-            <GrassField terrainData={terrainData}  />
+            <GrassField terrainData={terrainData} chunkSize={CHUNK_SIZE} planeSize={PLANE_SIZE} />
         </RigidBody>
     )
 }
