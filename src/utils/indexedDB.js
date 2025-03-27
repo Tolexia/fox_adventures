@@ -18,14 +18,14 @@ export const initDB = () => {
     })
 }
 
-export const saveTerrainData = async (data) => {
+export const saveTerrainData = async (x,z,data) => {
     try {
         const db = await initDB()
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite')
             const store = transaction.objectStore(STORE_NAME)
             
-            const request = store.put(data, 'terrain')
+            const request = store.put(data, `${x}-${z}`)
             
             request.onerror = () => reject(request.error)
             request.onsuccess = () => resolve(request.result)
@@ -35,14 +35,14 @@ export const saveTerrainData = async (data) => {
     }
 }
 
-export const getTerrainData = async () => {
+export const getTerrainData = async (x,z) => {
     try {
         const db = await initDB()
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readonly')
             const store = transaction.objectStore(STORE_NAME)
             
-            const request = store.get('terrain')
+            const request = store.get(`${x}-${z}`)
             
             request.onerror = () => reject(request.error)
             request.onsuccess = () => resolve(request.result)

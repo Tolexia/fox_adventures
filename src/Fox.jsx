@@ -1,7 +1,7 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RigidBody, useRapier, BallCollider } from '@react-three/rapier'
-import { useGLTF, useAnimations } from '@react-three/drei'
+import { useGLTF, useAnimations, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import useGame from './utils/useGame'
 
@@ -12,16 +12,20 @@ export default function Fox({ orbitControlsRef }) {
     const { actions } = useAnimations(animations, fox)
     const currentAnimation = useRef('Survey')
     const { rapier, world } = useRapier()
-
+    
     let foxPosition = useGame((state) => state.foxPosition)
-    const updateFoxPosition = useGame((state) => state.updateFoxPosition)
-
+    // const updateFoxPosition = useGame((state) => state.updateFoxPosition)
+    const updateFoxPosition = (position) => {
+        foxPosition = position
+        localStorage.setItem('foxPosition', JSON.stringify(position))
+        // console.log("updateFoxPosition", foxPosition)
+    }
     console.log("render Fox")
 
     const onPositionUpdate = (position) => {
         if(position.y < -10) {
             position.x = 0
-            position.y = 0
+            position.y = 2
             position.z = 0
         }
         const newPosition = [position.x, position.y, position.z]
@@ -220,12 +224,14 @@ export default function Fox({ orbitControlsRef }) {
     })
 
     return (
-        <RigidBody  
-            ref={rigidBody}
-            type="dynamic" 
-            position={foxPosition} 
-            colliders={false}
-            linearDamping={12}
+        <group>
+            {/* <DebugText position={foxPosition} /> */}
+            <RigidBody  
+                ref={rigidBody}
+                type="dynamic" 
+                position={foxPosition} 
+                colliders={false}
+                linearDamping={12}
             angularDamping={12}
             friction={2}
             mass={1}
@@ -266,5 +272,23 @@ export default function Fox({ orbitControlsRef }) {
                 density={50}
             /> */}
         </RigidBody>
+        </group>
+    )
+}
+
+function DebugText({ position }) {
+    const [debugText, setDebugText] = useState(`${position[0].toFixed(2)}, ${position[1].toFixed(2)}, ${position[2].toFixed(2)}`)
+
+    useFrame(() => {
+        const foxPosition = JSON.parse(localStorage.getItem('foxPosition'))
+        if(foxPosition != debugText) {
+            setDebugText(`${foxPosition[0].toFixed(2)}, ${foxPosition[1].toFixed(2)}, ${foxPosition[2].toFixed(2)}`)
+        }
+    })
+
+    return (
+        <Text fontSize={1} color="brown" position={[0, 1.5, 0]}>
+            {debugText}
+        </Text>
     )
 }
