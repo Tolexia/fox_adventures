@@ -34,7 +34,7 @@ body,
     justify-content: center;
     align-items: center;
     transition: opacity 1s;
-    z-index: 100;
+    z-index: 1000;
 }
 
 .loadingScreen--started {

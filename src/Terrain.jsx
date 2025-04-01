@@ -1,15 +1,16 @@
-
 import TerrainChunk from './TerrainChunk'
 import { useFrame } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useTexture } from '@react-three/drei'
 import * as THREE from 'three'
-const PLANE_SIZE = 100
-const CHUNK_SIZE = 10
+import useGame from './utils/useGame'
+
 
 export default function Terrain() {
     const grassTexture = useTexture('./grass.jpg')
     const cloudTexture = useTexture('./cloud.jpg')
+    const PLANE_SIZE = useGame((state) => state.PLANE_SIZE)
+    const CHUNK_SIZE = useGame((state) => state.CHUNK_SIZE)
 
     grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping
     cloudTexture.wrapS = cloudTexture.wrapT = THREE.RepeatWrapping
@@ -70,6 +71,7 @@ export default function Terrain() {
         transparent: true
       }), [uniforms])
 
+
     return (
         <group>
             {Array.from({ length: Math.ceil(PLANE_SIZE / CHUNK_SIZE) }, (_, i) => (
@@ -81,6 +83,7 @@ export default function Terrain() {
                         offsetX={i * CHUNK_SIZE}
                         offsetZ={j * CHUNK_SIZE}
                         chunkSize={CHUNK_SIZE}
+                        planeSize={PLANE_SIZE}
                         material={material}
                     />
                 ))

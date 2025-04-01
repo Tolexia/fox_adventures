@@ -1,7 +1,7 @@
-import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useRef, useMemo, useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useTexture } from '@react-three/drei'
+import { useTexture, Detailed } from '@react-three/drei'
 import useGame from './utils/useGame'
 // import { Text } from '@react-three/drei'
 
@@ -113,10 +113,28 @@ void main() {
 }
 `
 
-const BLADE_COUNT = 10000
+// const BLADE_COUNT = 10000
 const BLADE_WIDTH = .07
 const BLADE_HEIGHT = 0.17
 const BLADE_HEIGHT_VARIATION = 0.15
+
+const LOD_LEVELS = {
+  HIGH: {
+    distance: 20,
+    bladeCount: 10000,
+    material: "shader"
+  },
+  MEDIUM: {
+    distance: 50,
+    bladeCount: 1000,
+    material: "shader"
+  },
+  LOW: {
+    distance: 100,
+    bladeCount: 0,
+    material: "basic"
+  }
+}
 
 function convertRange(val, oldMin, oldMax, newMin, newMax) {
   return (((val - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin
@@ -227,26 +245,41 @@ export default function GrassChunk({ terrainData, offsetX, offsetZ, chunkSize, p
     return h0 * (1 - wz) + h1 * wz
   }
 
-  const uniforms = {
-    textures: { value: [grassTexture, cloudTexture] },
-    iTime: { value: 0.0 },
-    offsetX: { value: offsetX },
-    offsetZ: { value: offsetZ },
-    chunkSize: { value: CHUNK_SIZE },
-    foxPosition: { value: new THREE.Vector3(...foxPosition) }
-  }
+    const uniforms = {
+        textures: { value: [grassTexture, cloudTexture] },
+        iTime: { value: 0.0 },
+        offsetX: { value: offsetX },
+        offsetZ: { value: offsetZ },
+        chunkSize: { value: CHUNK_SIZE },
+        foxPosition: { value: new THREE.Vector3(...foxPosition) }
+    }
 
+    const refs = []
+    Object.keys(LOD_LEVELS).forEach(key => {
+      refs.push(useRef())
+    })
+    
   useFrame((state, delta) => {
+      const storedFoxPosition = localStorage.getItem('foxPosition')
+      const foxPos = JSON.parse(storedFoxPosition)
     if (meshRef.current) {
     //   uniforms.iTime.value = state.clock.elapsedTime
-        uniforms.iTime.value = Date.now() - startTime.current
-        const storedFoxPosition = localStorage.getItem('foxPosition')
-        const foxPos = JSON.parse(storedFoxPosition)
-        meshRef.current.material.uniforms.foxPosition.value = new THREE.Vector3(...foxPos)
+        // uniforms.iTime.value = Date.now() - startTime.current
+        // meshRef.current.material.uniforms.foxPosition.value = new THREE.Vector3(...foxPos)
+        // material.uniforms.foxPosition.value = new THREE.Vector3(...foxPos)
     }
+    refs.forEach(ref => {
+        if(!ref.current || !ref.current.material) return
+        // console.log("ref", ref.current.material)
+        if(ref.current.material.uniforms) {
+            ref.current.material.uniforms.foxPosition.value = new THREE.Vector3(...foxPos)
+            ref.current.material.uniforms.iTime.value = Date.now() - startTime.current
+        }
+    })
   })
   let minDistanceToFox = 9999999
-  const geometry = useMemo(() => {
+
+  const getGeometry = (BLADE_COUNT) => {
     if (!terrainData) return null
 
     const positions = []
@@ -303,9 +336,21 @@ export default function GrassChunk({ terrainData, offsetX, offsetZ, chunkSize, p
     geom.computeVertexNormals()
    
     return geom
+  }
+  const geometry = useMemo(() => {
+    if (!terrainData) return null
+
+    const geometries = []
+    Object.keys(LOD_LEVELS).forEach(level => {
+      const { bladeCount } = LOD_LEVELS[level]
+      const geom = getGeometry(bladeCount)
+      geometries.push(geom)
+    })
+
+    return geometries
   }, [terrainData])
 
-
+//   console.log("geometry", geometry)
   const material = new THREE.ShaderMaterial({
     uniforms,
     vertexShader,
@@ -314,19 +359,29 @@ export default function GrassChunk({ terrainData, offsetX, offsetZ, chunkSize, p
     side: THREE.DoubleSide,
     transparent: true
   })
+  const basicMaterial = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(0.55, 0.85, 0.45),
+    transparent: true
+  })
 
   if (!terrainData) return null
 
+  const incrementLoadedChunks = useGame((state) => state.incrementLoadedChunks)
+   // Signaler que ce chunk est chargé
+//    useEffect(() => {
+    setTimeout(() => {
+        incrementLoadedChunks()
+        console.log("incrementLoadedChunks")
+    }, 10)
+    // }, [])
 
   return (
-    <group>
-      <mesh ref={meshRef} geometry={geometry} material={material}/>
-      {/* <Text fontSize={1} color="black" position={[0, 1, 0]}>
-        {`${offsetX}, ${offsetZ}`}
-      </Text>
-      <Text fontSize={1} color="red" position={[offsetX, 2, offsetZ]}>
-        {`${offsetX}, ${offsetZ}`}
-      </Text>} */}
-    </group>
+    // <></>
+    <Detailed distances={[...Object.keys(LOD_LEVELS).map(key => LOD_LEVELS[key].distance)]} >
+        {Object.keys(LOD_LEVELS).map((key, index) => (
+            <mesh key={key} ref={refs[index]} geometry={geometry[index]} material={LOD_LEVELS[key].material === "shader" ? material : basicMaterial}/>
+        ))}
+    </Detailed>
+    //   <mesh ref={meshRef} geometry={geometry} material={material}/>
   )
 } 

@@ -8,6 +8,7 @@ import LoadingScreen from './LoadingScreen'
 
 function App() {
    
+    // localStorage.setItem('chunksLoaded', 0)
 
     return (
         <>
